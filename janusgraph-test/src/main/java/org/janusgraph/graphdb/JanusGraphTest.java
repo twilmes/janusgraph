@@ -3455,14 +3455,14 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         //Verify traversal metrics when all reads are from cache (i.e. no backend queries)
         t = gts.V().has("id", sid).local(__.outE("knows").has("weight", P.between(1, 3)).order().by("weight", decr).limit(10)).profile();
         assertCount(superV * 10, t);
-        metrics = (TraversalMetrics) t.asAdmin().getSideEffects().get("~metrics").get();
+        metrics = (TraversalMetrics) t.asAdmin().getSideEffects().get("~metrics");
         verifyMetrics(metrics.getMetrics(0), true, false);
         verifyMetrics(metrics.getMetrics(1), true, true);
 
         //Verify that properties also use multi query
         t = gts.V().has("id", sid).values("names").profile();
         assertCount(superV * numV, t);
-        metrics = (TraversalMetrics) t.asAdmin().getSideEffects().get("~metrics").get();
+        metrics = (TraversalMetrics) t.asAdmin().getSideEffects().get("~metrics");
         verifyMetrics(metrics.getMetrics(0), true, false);
         verifyMetrics(metrics.getMetrics(1), true, true);
 
@@ -3472,7 +3472,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         //Verify traversal metrics when having to read from backend [same query as above]
         t = gts.V().has("id", sid).local(__.outE("knows").has("weight", P.gte(1)).has("weight", P.lt(3)).order().by("weight", decr).limit(10)).profile();
         assertCount(superV * 10, t);
-        metrics = (TraversalMetrics) t.asAdmin().getSideEffects().get("~metrics").get();
+        metrics = (TraversalMetrics) t.asAdmin().getSideEffects().get("~metrics");
 //        System.out.println(metrics);
         verifyMetrics(metrics.getMetrics(0), false, false);
         verifyMetrics(metrics.getMetrics(1), false, true);
@@ -3480,7 +3480,7 @@ public abstract class JanusGraphTest extends JanusGraphBaseTest {
         //Verify that properties also use multi query [same query as above]
         t = gts.V().has("id", sid).values("names").profile();
         assertCount(superV * numV, t);
-        metrics = (TraversalMetrics) t.asAdmin().getSideEffects().get("~metrics").get();
+        metrics = (TraversalMetrics) t.asAdmin().getSideEffects().get("~metrics");
 //        System.out.println(metrics);
         verifyMetrics(metrics.getMetrics(0), false, false);
         verifyMetrics(metrics.getMetrics(1), false, true);

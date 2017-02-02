@@ -18,6 +18,8 @@ import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import org.apache.tinkerpop.gremlin.process.traversal.Traversal;
+import org.apache.tinkerpop.gremlin.structure.Edge;
 import org.janusgraph.core.JanusGraphException;
 import org.janusgraph.core.JanusGraphComputer;
 import org.janusgraph.core.JanusGraphTransaction;
@@ -55,6 +57,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * @author Matthias Broecheler (me@matthiasb.com)
@@ -64,7 +67,7 @@ public class FulgoraGraphComputer implements JanusGraphComputer {
     private static final Logger log =
             LoggerFactory.getLogger(FulgoraGraphComputer.class);
 
-    public static final Set<String> NON_PERSISTING_KEYS = ImmutableSet.of(TraversalSideEffects.SIDE_EFFECTS,
+    public static final Set<String> NON_PERSISTING_KEYS = ImmutableSet.of(//TraversalSideEffects.SIDE_EFFECTS,
             TraversalVertexProgram.HALTED_TRAVERSERS);
 
     private VertexProgram<?> vertexProgram;
@@ -113,6 +116,16 @@ public class FulgoraGraphComputer implements JanusGraphComputer {
         Preconditions.checkArgument(threads > 0, "Invalid number of threads: %s", threads);
         numThreads = threads;
         return this;
+    }
+
+    @Override
+    public GraphComputer vertices(Traversal<Vertex, Vertex> traversal) throws IllegalArgumentException {
+        return null;
+    }
+
+    @Override
+    public GraphComputer edges(Traversal<Vertex, Edge> traversal) throws IllegalArgumentException {
+        return null;
     }
 
     @Override
@@ -263,11 +276,11 @@ public class FulgoraGraphComputer implements JanusGraphComputer {
             Graph resultgraph = graph;
             if (persistMode == Persist.NOTHING && resultGraphMode == ResultGraph.NEW) {
                 resultgraph = EmptyGraph.instance();
-            } else if (persistMode != Persist.NOTHING && vertexProgram != null && !vertexProgram.getElementComputeKeys().isEmpty()) {
+            } else if (persistMode != Persist.NOTHING && vertexProgram != null && !vertexProgram.getVertexComputeKeys().isEmpty()) {
                 //First, create property keys in graph if they don't already exist
                 JanusGraphManagement mgmt = graph.openManagement();
                 try {
-                    for (String key : vertexProgram.getElementComputeKeys()) {
+                    for (String key : vertexProgram.getVertexComputeKeys().stream().map(k -> k.getKey()).collect(Collectors.toList())) {
                         if (!mgmt.containsPropertyKey(key))
                             log.warn("Property key [{}] is not part of the schema and will be created. It is advised to initialize all keys.", key);
                         mgmt.getOrCreatePropertyKey(key);
@@ -290,7 +303,7 @@ public class FulgoraGraphComputer implements JanusGraphComputer {
                 if (resultGraphMode == ResultGraph.ORIGINAL) {
                     AtomicInteger failures = new AtomicInteger(0);
                     try (WorkerPool workers = new WorkerPool(numThreads)) {
-                        List<Map.Entry<Long, Map<String, Object>>> subset = new ArrayList<>(writeBatchSize / vertexProgram.getElementComputeKeys().size());
+                        List<Map.Entry<Long, Map<String, Object>>> subset = new ArrayList<>(writeBatchSize / vertexProgram.getVertexComputeKeys().size());
                         int currentSize = 0;
                         for (Map.Entry<Long, Map<String, Object>> entry : mutatedProperties.entrySet()) {
                             subset.add(entry);

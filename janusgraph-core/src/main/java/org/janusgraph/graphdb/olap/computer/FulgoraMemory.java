@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * @author Marko A. Rodriguez (http://markorodriguez.com)
@@ -44,7 +45,7 @@ public class FulgoraMemory implements Memory.Admin {
         this.currentMap = new ConcurrentHashMap<>();
         this.previousMap = new ConcurrentHashMap<>();
         if (null != vertexProgram) {
-            for (final String key : vertexProgram.getMemoryComputeKeys()) {
+            for (final String key : vertexProgram.getMemoryComputeKeys().stream().map(k -> k.getKey()).collect(Collectors.toList())) {
                 MemoryHelper.validateKey(key);
                 this.memoryKeys.add(key);
             }
@@ -108,28 +109,33 @@ public class FulgoraMemory implements Memory.Admin {
             return r;
     }
 
-    @Override
-    public void incr(final String key, final long delta) {
-        checkKeyValue(key, delta);
-        this.currentMap.compute(key, (k, v) -> null == v ? delta : delta + (Long) v);
-    }
-
-    @Override
-    public void and(final String key, final boolean bool) {
-        checkKeyValue(key, bool);
-        this.currentMap.compute(key, (k, v) -> null == v ? bool : bool && (Boolean) v);
-    }
-
-    @Override
-    public void or(final String key, final boolean bool) {
-        checkKeyValue(key, bool);
-        this.currentMap.compute(key, (k, v) -> null == v ? bool : bool || (Boolean) v);
-    }
+//    @Override
+//    public void incr(final String key, final long delta) {
+//        checkKeyValue(key, delta);
+//        this.currentMap.compute(key, (k, v) -> null == v ? delta : delta + (Long) v);
+//    }
+//
+//    @Override
+//    public void and(final String key, final boolean bool) {
+//        checkKeyValue(key, bool);
+//        this.currentMap.compute(key, (k, v) -> null == v ? bool : bool && (Boolean) v);
+//    }
+//
+//    @Override
+//    public void or(final String key, final boolean bool) {
+//        checkKeyValue(key, bool);
+//        this.currentMap.compute(key, (k, v) -> null == v ? bool : bool || (Boolean) v);
+//    }
 
     @Override
     public void set(final String key, final Object value) {
         checkKeyValue(key, value);
         this.currentMap.put(key, value);
+    }
+
+    @Override
+    public void add(String s, Object o) throws IllegalArgumentException, IllegalStateException {
+        // todo
     }
 
     @Override

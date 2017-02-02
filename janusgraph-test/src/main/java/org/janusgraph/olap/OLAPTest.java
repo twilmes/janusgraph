@@ -384,8 +384,8 @@ public abstract class OLAPTest extends JanusGraphBaseTest {
         }
 
         @Override
-        public Set<String> getElementComputeKeys() {
-            return ImmutableSet.of(DEGREE);
+        public Set<VertexComputeKey> getVertexComputeKeys() {
+            return ImmutableSet.of(VertexComputeKey.of(DEGREE, false));
         }
 
         @Override

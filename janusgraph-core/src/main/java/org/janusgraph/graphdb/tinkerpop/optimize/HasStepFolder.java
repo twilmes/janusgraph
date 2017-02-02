@@ -108,7 +108,7 @@ public interface HasStepFolder<S, E> extends Step<S, E> {
     public static void foldInOrder(final HasStepFolder janusgraphStep, final Traversal.Admin<?, ?> traversal,
                                    final Traversal<?, ?> rootTraversal, boolean isVertexOrder) {
         Step<?, ?> currentStep = janusgraphStep.getNextStep();
-        OrderGlobalStep<?> lastOrder = null;
+        OrderGlobalStep<?, ?> lastOrder = null;
         while (true) {
             if (currentStep instanceof OrderGlobalStep) {
                 if (lastOrder != null) { //Previous orders are rendered irrelevant by next order (since re-ordered)
