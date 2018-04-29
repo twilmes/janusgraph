@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -128,46 +129,83 @@ public class FoundationDBKeyValueStore implements OrderedKeyValueStore {
         final byte[] endKey = db.pack(keyEnd.as(ENTRY_FACTORY));
 
         try {
-            final CompletableFuture<List<KeyValue>> results =
-                tx.getRange(new Range(foundKey,endKey), query.getLimit()).asList();
-            for (final KeyValue keyValue : results.get()) {
-                StaticBuffer key = getBuffer(db.unpack(keyValue.getKey()).getBytes(0));
-                if (selector.include(key))
-                    result.add(new KeyValueEntry(key, getBuffer(keyValue.getValue())));
-            }
+            tx.getRange(new Range(foundKey,endKey), query.getLimit()).asList().thenAcceptAsync((results) -> {
+                for (final KeyValue keyValue : results) {
+                    StaticBuffer key = getBuffer(db.unpack(keyValue.getKey()).getBytes(0));
+                    if (selector.include(key))
+                        result.add(new KeyValueEntry(key, getBuffer(keyValue.getValue())));
+                }
+            }).get();
         } catch (Exception e) {
             throw new PermanentBackendException(e);
         }
 
         log.trace("db={}, op=getSlice, tx={}, resultcount={}", name, txh, result.size());
 
-        return new RecordIterator<KeyValueEntry>() {
-            private final Iterator<KeyValueEntry> entries = result.iterator();
+        return new FoundationDBRecordIterator(result);
+    }
 
-            @Override
-            public boolean hasNext() {
-                return entries.hasNext();
-            }
 
-            @Override
-            public KeyValueEntry next() {
-                return entries.next();
-            }
 
-            @Override
-            public void close() {
-            }
+    private class FoundationDBRecordIterator implements RecordIterator<KeyValueEntry> {
+        private final Iterator<KeyValueEntry> entries;
 
-            @Override
-            public void remove() {
-                throw new UnsupportedOperationException();
-            }
-        };
+        public FoundationDBRecordIterator(final List<KeyValueEntry> result) {
+              this.entries = result.iterator();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return entries.hasNext();
+        }
+
+        @Override
+        public KeyValueEntry next() {
+            return entries.next();
+        }
+
+        @Override
+        public void close() {
+        }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
     }
 
     @Override
     public Map<KVQuery,RecordIterator<KeyValueEntry>> getSlices(List<KVQuery> queries, StoreTransaction txh) throws BackendException {
-        throw new UnsupportedOperationException();
+        log.trace("beginning db={}, op=getSlice, tx={}", name, txh);
+        final Transaction tx = getTransaction(txh);
+        final Map<KVQuery, RecordIterator<KeyValueEntry>> resultMap = new HashMap<>();
+        final List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+        try {
+            for (final KVQuery query : queries) {
+                final StaticBuffer keyStart = query.getStart();
+                final StaticBuffer keyEnd = query.getEnd();
+                final KeySelector selector = query.getKeySelector();
+                final byte[] foundKey = db.pack(keyStart.as(ENTRY_FACTORY));
+                final byte[] endKey = db.pack(keyEnd.as(ENTRY_FACTORY));
+
+                    futures.add(tx.getRange(new Range(foundKey, endKey), query.getLimit()).asList()
+                        .thenAcceptAsync((r) -> {
+                            final List<KeyValueEntry> result = new ArrayList<>();
+                            for (final KeyValue keyValue : r) {
+                                final StaticBuffer key = getBuffer(db.unpack(keyValue.getKey()).getBytes(0));
+                                if (selector.include(key))
+                                    result.add(new KeyValueEntry(key, getBuffer(keyValue.getValue())));
+                            }
+                            resultMap.put(query, new FoundationDBRecordIterator(result));
+                        }));
+            }
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).join();
+        } catch (Exception e) {
+            throw new PermanentBackendException(e);
+        }
+
+        return resultMap;
     }
 
     @Override

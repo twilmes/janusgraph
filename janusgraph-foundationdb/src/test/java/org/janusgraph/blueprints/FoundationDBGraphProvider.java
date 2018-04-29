@@ -32,11 +32,4 @@ public class FoundationDBGraphProvider extends AbstractJanusGraphProvider {
     public ModifiableConfiguration getJanusGraphConfiguration(String graphName, Class<?> test, String testMethodName) {
         return FoundationDBStorageSetup.getFoundationDBConfiguration();
     }
-
-    @Override
-    public Set<Class> getImplementations() {
-        final Set<Class> implementations = super.getImplementations();
-        implementations.add(FoundationDBTx.class);
-        return implementations;
-    }
 }

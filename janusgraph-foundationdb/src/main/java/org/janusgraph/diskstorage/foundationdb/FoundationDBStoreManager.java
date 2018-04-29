@@ -82,6 +82,7 @@ public class FoundationDBStoreManager extends AbstractStoreManager implements Or
                     .keyOrdered(true)
                     .supportsInterruption(false)
                     .optimisticLocking(true)
+                    .multiQuery(true)
                     .build();
     }
 
