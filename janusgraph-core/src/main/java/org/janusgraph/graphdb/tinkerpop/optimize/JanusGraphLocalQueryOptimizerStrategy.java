@@ -14,6 +14,7 @@
 
 package org.janusgraph.graphdb.tinkerpop.optimize;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tinkerpop.gremlin.process.traversal.step.TraversalParent;
 import org.apache.tinkerpop.gremlin.process.traversal.step.branch.BranchStep;
 import org.apache.tinkerpop.gremlin.process.traversal.step.branch.RepeatStep;
@@ -50,7 +51,10 @@ public class JanusGraphLocalQueryOptimizerStrategy extends AbstractTraversalStra
     private static final JanusGraphLocalQueryOptimizerStrategy INSTANCE = new JanusGraphLocalQueryOptimizerStrategy();
 
     private static final List<Class<? extends Step>> MULTIQUERY_INCOMPATIBLE_STEPS =
-        Arrays.asList(RepeatStep.class, MatchStep.class, BranchStep.class);
+        Arrays.asList(
+//            RepeatStep.class,
+            MatchStep.class,
+            BranchStep.class);
 
     private JanusGraphLocalQueryOptimizerStrategy() {
     }
@@ -88,7 +92,14 @@ public class JanusGraphLocalQueryOptimizerStrategy extends AbstractTraversalStra
             }
 
             if (useMultiQuery && !(isChildOf(vstep, MULTIQUERY_INCOMPATIBLE_STEPS))) {
-                vstep.setUseMultiQuery(true);
+                if (vstep.getPreviousStep().equals(EmptyStep.instance())) {
+                    if (isChildOf(vstep, ImmutableList.of(RepeatStep.class))) {
+                        vstep.isRepeatable = true;
+                        vstep.setUseMultiQuery(true, true);
+                    }
+                } else {
+                    vstep.setUseMultiQuery(true, false);
+                }
             }
         });
 
@@ -109,7 +120,7 @@ public class JanusGraphLocalQueryOptimizerStrategy extends AbstractTraversalStra
             }
 
             if (useMultiQuery && !(isChildOf(vstep, MULTIQUERY_INCOMPATIBLE_STEPS))) {
-                vstep.setUseMultiQuery(true);
+                vstep.setUseMultiQuery(true, false);
             }
         });
 
@@ -163,7 +174,11 @@ public class JanusGraphLocalQueryOptimizerStrategy extends AbstractTraversalStra
             TraversalHelper.replaceStep(localStep, vstep, traversal);
 
             if (useMultiQuery && !(isChildOf(vstep, MULTIQUERY_INCOMPATIBLE_STEPS))) {
-                vstep.setUseMultiQuery(true);
+                if (vstep.getPreviousStep().equals(EmptyStep.instance())) {
+                    vstep.setUseMultiQuery(true, true);
+                } else {
+                    vstep.setUseMultiQuery(true, false);
+                }
             }
         }
     }

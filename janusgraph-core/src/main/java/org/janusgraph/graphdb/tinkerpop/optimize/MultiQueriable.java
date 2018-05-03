@@ -21,6 +21,6 @@ import org.apache.tinkerpop.gremlin.process.traversal.Step;
  */
 public interface MultiQueriable<S,E> extends Step<S,E> {
 
-    void setUseMultiQuery(boolean useMultiQuery);
+    void setUseMultiQuery(boolean useMultiQuery, boolean firstNested);
 
 }

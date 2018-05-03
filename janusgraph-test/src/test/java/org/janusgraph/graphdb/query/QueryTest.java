@@ -15,6 +15,11 @@
 package org.janusgraph.graphdb.query;
 
 import com.google.common.collect.Iterators;
+import org.apache.tinkerpop.gremlin.process.traversal.Path;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
+import org.apache.tinkerpop.gremlin.structure.Vertex;
+import org.apache.tinkerpop.gremlin.structure.io.gryo.GryoIo;
 import org.janusgraph.core.*;
 import org.janusgraph.core.attribute.Contain;
 import org.janusgraph.diskstorage.configuration.ModifiableConfiguration;
@@ -26,8 +31,16 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
+import static org.apache.tinkerpop.gremlin.process.traversal.Scope.local;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.barrier;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.out;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.outE;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.select;
 import static org.junit.Assert.*;
 
 /**
@@ -42,6 +55,7 @@ public class QueryTest {
     public void setup() {
         ModifiableConfiguration config = GraphDatabaseConfiguration.buildGraphConfiguration();
         config.set(GraphDatabaseConfiguration.STORAGE_BACKEND, InMemoryStoreManager.class.getCanonicalName());
+        config.set(GraphDatabaseConfiguration.USE_MULTIQUERY, true);
         graph = JanusGraphFactory.open(config);
         tx = graph.newTransaction();
     }
@@ -50,6 +64,88 @@ public class QueryTest {
     public void shutdown() {
         if (tx!=null && tx.isOpen()) tx.commit();
         if (graph!=null && graph.isOpen()) graph.close();
+    }
+
+    @Test
+    public void testTp() throws IOException {
+        graph.io(GryoIo.build()).readGraph("/home/twilmes/repos/janusgraph/data/tinkerpop-modern.kryo");
+
+        GraphTraversalSource g = graph.traversal();
+
+//        List<Map<Object, Long>> result = g.V(new Object[0]).repeat(__.both(new String[0])).until((t) -> {
+//            return ((Vertex) t.get()).value("name").equals("lop") || t.loops() > 1;
+//        }).groupCount().by("name").toList();
+
+//        List<Object> result = g.V().has("name", "marko").repeat(out()).until(outE().count().is(0)).values("name").toList();
+
+        List<Object> result = g.V().as("a").in().as("b").in().as("c").<Map<String, String>>select("a", "b", "c").by("name").limit(local, 1).toList();
+
+        result.forEach(System.out::println);
+    }
+
+    @Test
+    public void testExp() {
+        GraphTraversalSource g = graph.traversal();
+
+        List<Map<String, Object>> result = g
+            .addV("Person").as("a").property("name", "a")
+            .addV("Person").as("b").property("name", "b")
+            .addV("Person").as("c").property("name", "c")
+            .addV("Person").as("d").property("name", "d")
+            .addV("Person").as("e").property("name", "e")
+            .addV("Person").as("f").property("name", "f")
+            .addE("knows").from("a").to("c")
+            .addE("knows").from("b").to("c")
+            .addE("knows").from("a").to("d")
+            .addE("knows").from("b").to("d")
+            .addE("knows").from("c").to("e")
+            .addE("knows").from("d").to("e")
+            .addE("knows").from("d").to("f")
+            .addE("knows").from("d").to("f")
+            .project("a", "b")
+            .by(select("a").id()).by(select("b").id()).toList();
+
+//        List<Map<String, Object>> result = g
+//            .addV("Person").as("a").property("name", "a")
+//            .addV("Person").as("b").property("name", "b")
+//            .addV("Person").as("bb").property("name", "bb")
+//            .addV("Person").as("c").property("name", "c")
+//            .addV("Person").as("cc").property("name", "cc")
+//            .addV("Person").as("d").property("name", "d")
+//            .addV("Person").as("dd").property("name", "dd")
+//            .addV("Person").as("e").property("name", "e")
+//            .addV("Person").as("ee").property("name", "ee")
+//            .addV("Person").as("f").property("name", "f")
+//            .addV("Person").as("ff").property("name", "ff")
+//            .addE("knows").from("a").to("b")
+//            .addE("knows").from("a").to("bb")
+//            .addE("knows").from("b").to("c")
+//            .addE("knows").from("c").to("d")
+//            .addE("knows").from("d").to("e")
+//            .addE("knows").from("e").to("f")
+////            .addE("knows").from("d").to("e")
+////            .addE("knows").from("d").to("f")
+////            .addE("knows").from("d").to("f")
+//            .project("a", "b")
+//            .by(select("a").id()).by(select("b").id()).toList();
+
+        g.tx().commit();
+
+        g.V().valueMap(true).toStream().forEach(System.out::println);
+
+//        System.out.println(g.V(result.get(0).get("a"), result.get(0).get("b")).repeat(out()).emit().explain());
+
+//        List<Object> r = g.V(result.get(0).get("a"), result.get(0).get("b")).repeat(out()).emit().values().toList();
+        for(int i = 0; i < 1; i++) {
+            List<Object> r = g.V(result.get(0).get("a"), result.get(0).get("b")).repeat(out()).emit().values().toList();
+//        assert r.size() == 8;
+//            List<Vertex> r = g.V(result.get(0).get("a")).out().toList();
+            r.stream().forEach(System.out::println);
+            assert r.size() == 2;
+
+        }
+
+        System.out.println("DONE");
     }
 
     @Test

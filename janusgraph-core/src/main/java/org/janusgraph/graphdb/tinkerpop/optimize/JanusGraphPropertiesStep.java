@@ -56,7 +56,7 @@ public class JanusGraphPropertiesStep<E> extends PropertiesStep<E> implements Ha
 
 
     @Override
-    public void setUseMultiQuery(boolean useMultiQuery) {
+    public void setUseMultiQuery(boolean useMultiQuery, boolean isNested) {
         this.useMultiQuery = useMultiQuery;
     }
 
