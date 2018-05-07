@@ -15,6 +15,9 @@
 package org.janusgraph.graphdb.tinkerpop.optimize;
 
 import com.google.common.collect.Iterables;
+import org.apache.tinkerpop.gremlin.process.traversal.Step;
+import org.apache.tinkerpop.gremlin.process.traversal.step.util.EmptyStep;
+import org.apache.tinkerpop.gremlin.util.iterator.IteratorUtils;
 import org.janusgraph.core.BaseVertexQuery;
 import org.janusgraph.core.JanusGraphElement;
 import org.janusgraph.core.JanusGraphMultiVertexQuery;
@@ -39,6 +42,7 @@ import org.apache.tinkerpop.gremlin.structure.util.StringFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -84,6 +88,26 @@ public class JanusGraphVertexStep<E extends Element> extends VertexStep<E> imple
 
     List<Traverser.Admin<Vertex>> vertices = new LinkedList<>();
 
+
+    Map<Vertex, Integer> startsCountMap = new HashMap<>();
+
+    private void incrStartsCountMap(Vertex elem) {
+        Integer elemCount = startsCountMap.getOrDefault(elem, 0);
+        elemCount++;
+        startsCountMap.put(elem, elemCount);
+    }
+
+//    private void decrStartsCountMap(Vertex elem) {
+//        Integer elemCount = startsCountMap.get(elem);
+//        if (elemCount != null) {
+//            startsCountMap.put(elem, elemCount-1);
+//        }
+//    }
+
+    private int getStartsCount(Vertex elem) {
+        return startsCountMap.getOrDefault(elem, 0);
+    }
+
     @SuppressWarnings("deprecation")
     private void regularInit() {
 //        assert !initialized;
@@ -104,6 +128,7 @@ public class JanusGraphVertexStep<E extends Element> extends VertexStep<E> imple
             makeQuery(mquery);
 
             multiQueryResults = (Vertex.class.isAssignableFrom(getReturnClass())) ? mquery.vertices() : mquery.edges();
+            triggerCount = getTriggerCount(multiQueryResults);
 //            initialized = true;
         }
     }
@@ -111,13 +136,18 @@ public class JanusGraphVertexStep<E extends Element> extends VertexStep<E> imple
     private boolean nestedInitialized = false;
     boolean isRepeatable = false;
 
+    int getTriggerCount(Map<JanusGraphVertex, Iterable<? extends JanusGraphElement>> mqResults) {
+        int empties = (int) multiQueryResults.values().stream().filter(r -> !r.iterator().hasNext()).count();
+        return empties + (int)multiQueryResults.values().stream().map(vals -> IteratorUtils.count(vals)).mapToLong(i -> i).sum();
+    }
+
     private void initializeNested() {
-        if (!starts.hasNext()) {
-            System.out.println("MQ Nested throwing FNSE");
+        if (triggerCount == 0 && !starts.hasNext()) {
+            System.out.println("MQ Nested throwing FNSE " + this.toString());
             throw FastNoSuchElementException.instance();
         }
 
-        if (!initialized && !nestedInitialized) {
+        if (firstNested && !initialized && !nestedInitialized) {
             starts.forEachRemaining(v -> {
                 vertices.add(v);
                 System.out.println("MQ Adding nested start " + v.get());
@@ -131,15 +161,16 @@ public class JanusGraphVertexStep<E extends Element> extends VertexStep<E> imple
                 mquery.addAllVertices(vertices.stream().map(Traverser::get).collect(Collectors.toList()));
                 starts.add(vertices.iterator());
                 makeQuery(mquery);
+                vertices.forEach(v -> incrStartsCountMap(v.get()));
 
                 multiQueryResults = (Vertex.class.isAssignableFrom(getReturnClass())) ? mquery.vertices() : mquery.edges();
                 initialized = true;
                 nestedInitialized = true;
                 System.out.println("MQ Nested MQ results: " + multiQueryResults);
-
+                triggerCount = getTriggerCount(multiQueryResults);
             }
         } else {
-            if (multiQueryResults.isEmpty()) {
+            if (triggerCount == 0) { //multiQueryResults.isEmpty()) {
                 JanusGraphMultiVertexQuery mquery = JanusGraphTraversalUtil.getTx(traversal).multiQuery();
                 List<Traverser.Admin<Vertex>> vertices = new ArrayList<>();
                 starts.forEachRemaining(v -> {
@@ -152,93 +183,12 @@ public class JanusGraphVertexStep<E extends Element> extends VertexStep<E> imple
                 makeQuery(mquery);
                 multiQueryResults = (Vertex.class.isAssignableFrom(getReturnClass())) ? mquery.vertices() : mquery.edges();
                 System.out.println("MQ non-nested MQ results: " + multiQueryResults);
-
+                triggerCount = getTriggerCount(multiQueryResults);
             }
         }
     }
 
-    @SuppressWarnings("deprecation")
-    private void initializeBak() {
-
-        if (!starts.hasNext()) {
-            System.out.println("MQ: NO STARTS");
-            throw FastNoSuchElementException.instance();
-        }
-
-        if (useMultiQuery && initialized) {
-            JanusGraphMultiVertexQuery mquery = JanusGraphTraversalUtil.getTx(traversal).multiQuery();
-            List<Traverser.Admin<Vertex>> vertices = new ArrayList<>();
-            starts.forEachRemaining(v -> {
-                vertices.add(v);
-                mquery.addVertex(v.get());
-                System.out.println("MQ Adding start " + v);
-            });
-            starts.add(vertices.iterator());
-            assert vertices.size() > 0;
-            makeQuery(mquery);
-            multiQueryResults = (Vertex.class.isAssignableFrom(getReturnClass())) ? mquery.vertices() : mquery.edges();
-            System.out.println("MQ Nested MQ results: " + multiQueryResults);
-        }
-
-        //assert !initialized;
-        //initialized = true;
-        if (useMultiQuery && !initialized) {
-
-//            if (!starts.hasNext()) {
-//                throw FastNoSuchElementException.instance();
-//            }
-//            boolean parentHasNext = this.getTraversal().getParent().asStep().hasNext();
-//            boolean runQuery = false;
-//            if (vertices.isEmpty() && !parentHasNext) {
-//                runQuery = true;
-//            }
-//
-//            if (runQuery) {
-//                JanusGraphMultiVertexQuery mquery = JanusGraphTraversalUtil.getTx(traversal).multiQuery();
-//                mquery.addAllVertices(vertices);
-//                starts.add(vertices.iterator());
-//                makeQuery(mquery);
-//
-//                multiQueryResults = (Vertex.class.isAssignableFrom(getReturnClass())) ? mquery.vertices() : mquery.edges();
-//            }
-
-            starts.forEachRemaining(v -> {
-                System.out.println("MQ Adding nested start " + v);
-                vertices.add(v);
-            });
-            loaded = true;
-
-
-
-            boolean more = this.getTraversal().getParent().asStep().getPreviousStep().hasNext();
-            System.out.println("NEXT? " + more);
-
-            if (!more) {
-                JanusGraphMultiVertexQuery mquery = JanusGraphTraversalUtil.getTx(traversal).multiQuery();
-                mquery.addAllVertices(vertices.stream().map(Traverser::get).collect(Collectors.toList()));
-                starts.add(vertices.iterator());
-                makeQuery(mquery);
-
-                multiQueryResults = (Vertex.class.isAssignableFrom(getReturnClass())) ? mquery.vertices() : mquery.edges();
-                initialized = true;
-                System.out.println("MQ Nested MQ results: " + multiQueryResults);
-            }
-//            throw FastNoSuchElementException.instance();
-//            JanusGraphMultiVertexQuery mquery = JanusGraphTraversalUtil.getTx(traversal).multiQuery();
-//            List<Traverser.Admin<Vertex>> vertices = new ArrayList<>();
-//            starts.forEachRemaining(v -> {
-//                vertices.add(v);
-//                mquery.addVertex(v.get());
-//            });
-//            starts.add(vertices.iterator());
-//            assert vertices.size() > 0;
-//            makeQuery(mquery);
-//
-//            multiQueryResults = (Vertex.class.isAssignableFrom(getReturnClass())) ? mquery.vertices() : mquery.edges();
-        }
-    }
-
-    boolean loaded = false;
+    int triggerCount = 0;
 
     @Override
     protected Traverser.Admin<E> processNextStart() {
@@ -246,10 +196,13 @@ public class JanusGraphVertexStep<E extends Element> extends VertexStep<E> imple
 //        if (initialized && !starts.hasNext()) initialize();
         if (useMultiQuery) {
             // check if initialized should be flipped back to false
-            if (firstNested) {
+//            if (firstNested) {
+            if (isRepeatable) {
                 initializeNested();
             } else {
-                if (!initialized) regularInit();
+//                if (!initialized && triggerCount == 0)
+                if (!initialized)
+                    regularInit();
             }
 //            if (firstNested) {
 //                if (useMultiQuery && !initialized) initialize();
@@ -258,17 +211,23 @@ public class JanusGraphVertexStep<E extends Element> extends VertexStep<E> imple
 //                if (!initialized && (multiQueryResults == null || multiQueryResults.isEmpty())) regularInit();
 //            }
         }
+
+        if (triggerCount > 0)
+            triggerCount--;
+
         Traverser.Admin<E> result = null;
         try {
             result = super.processNextStart();
         } catch (FastNoSuchElementException e) {
             System.out.println("Next: Exception");
-            if (isRepeatable)
-                initialized = false;
+            //if (isRepeatable)
+                //initialized = false;
             throw e;
         }
 
-        System.out.println("Next: " + result);
+
+
+        //System.out.println("Next: " + result);
 
         return result;
     }
@@ -276,13 +235,30 @@ public class JanusGraphVertexStep<E extends Element> extends VertexStep<E> imple
     @Override
     protected Iterator<E> flatMap(final Traverser.Admin<Vertex> traverser) {
         if (useMultiQuery) {
+            System.out.println(this.toString() + "\t Trigger Count: "+ triggerCount);
             assert multiQueryResults != null;
+
+
             if (multiQueryResults.get(traverser.get()) == null) {
+                //triggerCount--;
                 return Collections.emptyIterator();
+                //throw FastNoSuchElementException.instance();
             }
-            Iterator<E> it = (Iterator<E>) multiQueryResults.get(traverser.get()).iterator();
-            System.out.println("Removed: " + multiQueryResults.remove(traverser.get()));
-            return it;
+
+            return (Iterator<E>) multiQueryResults.get(traverser.get()).iterator();
+//            Iterator<E> it = (Iterator<E>) multiQueryResults.get(traverser.get()).iterator();
+//            //decrStartsCountMap(traverser.get());
+//
+//            if (getStartsCount(traverser.get()) == 0)
+//                System.out.println("Removed: " + multiQueryResults.remove(traverser.get()));
+//            //triggerCount--;
+//            //triggerCount = (int)multiQueryResults.values().stream().map(vals -> IteratorUtils.count(vals)).mapToLong(i -> i).sum();
+//            if (multiQueryResults.values().stream().filter(r -> !r.iterator().hasNext()).count() == multiQueryResults.size()) {
+//                System.out.println("!!!Emptying");
+//                //triggerCount = (int)multiQueryResults.values().stream().filter(r -> !r.iterator().hasNext()).count();
+//                multiQueryResults = Collections.emptyMap();
+//            }
+//            return it;
         } else {
             JanusGraphVertexQuery query = makeQuery((JanusGraphTraversalUtil.getJanusGraphVertex(traverser)).query());
             return (Vertex.class.isAssignableFrom(getReturnClass())) ? query.vertices().iterator() : query.edges().iterator();

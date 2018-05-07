@@ -54,9 +54,22 @@ public class JanusGraphLocalQueryOptimizerStrategy extends AbstractTraversalStra
         Arrays.asList(
 //            RepeatStep.class,
             MatchStep.class,
-            BranchStep.class);
+            BranchStep.class
+        );
 
     private JanusGraphLocalQueryOptimizerStrategy() {
+    }
+
+    private <T extends Step> T getParentStepOfClass(Step<?, ?> currentStep, Class<T> stepClass) {
+        Step<?, ?> parent = currentStep.getTraversal().getParent().asStep();
+        while (!parent.equals(EmptyStep.instance())) {
+            final Step<?, ?> p = parent;
+            if (stepClass.isInstance(p)) {
+                return stepClass.cast(p);
+            }
+            parent = parent.getTraversal().getParent().asStep();
+        }
+        return null;
     }
 
     @Override
@@ -92,11 +105,33 @@ public class JanusGraphLocalQueryOptimizerStrategy extends AbstractTraversalStra
             }
 
             if (useMultiQuery && !(isChildOf(vstep, MULTIQUERY_INCOMPATIBLE_STEPS))) {
-                if (vstep.getPreviousStep().equals(EmptyStep.instance())) {
-                    if (isChildOf(vstep, ImmutableList.of(RepeatStep.class))) {
-                        vstep.isRepeatable = true;
-                        vstep.setUseMultiQuery(true, true);
+                boolean isRepeatable = isChildOf(vstep, ImmutableList.of(RepeatStep.class));
+                boolean firstNested = true;
+
+                if (isRepeatable) {
+
+                    final RepeatStep repeatStep = getParentStepOfClass(originalStep, RepeatStep.class);
+                    if (repeatStep.getUntilTraversal() != null && repeatStep.getUntilTraversal().equals(originalStep.getTraversal()) && repeatStep.untilFirst) {
+                        firstNested = false;
                     }
+                }
+
+                if (isRepeatable) {
+                    Step prev = vstep.getPreviousStep();
+                    while (!prev.equals(EmptyStep.instance())) {
+                        if (prev instanceof VertexStep) {
+                            firstNested = false;
+                            break;
+                        }
+                        prev = prev.getPreviousStep();
+                    }
+                }
+
+                if (isRepeatable) {
+//                    if (isRepeatable) {
+                        vstep.isRepeatable = true;
+                        vstep.setUseMultiQuery(true, firstNested);
+//                    }
                 } else {
                     vstep.setUseMultiQuery(true, false);
                 }

@@ -15,9 +15,13 @@
 package org.janusgraph.graphdb.query;
 
 import com.google.common.collect.Iterators;
+import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.Path;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
+import org.apache.tinkerpop.gremlin.process.traversal.strategy.optimization.PathRetractionStrategy;
+import org.apache.tinkerpop.gremlin.process.traversal.strategy.verification.ComputerVerificationStrategy;
+import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.io.gryo.GryoIo;
 import org.janusgraph.core.*;
@@ -36,11 +40,25 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.tinkerpop.gremlin.process.traversal.P.eq;
+import static org.apache.tinkerpop.gremlin.process.traversal.P.lt;
+import static org.apache.tinkerpop.gremlin.process.traversal.Pop.first;
+import static org.apache.tinkerpop.gremlin.process.traversal.Pop.last;
 import static org.apache.tinkerpop.gremlin.process.traversal.Scope.local;
 import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.barrier;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.both;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.count;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.groupCount;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.has;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.identity;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.loops;
 import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.out;
 import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.outE;
 import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.select;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.unfold;
+import static org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__.where;
+import static org.apache.tinkerpop.gremlin.structure.Column.keys;
+import static org.apache.tinkerpop.gremlin.structure.Column.values;
 import static org.junit.Assert.*;
 
 /**
@@ -68,9 +86,7 @@ public class QueryTest {
 
     @Test
     public void testTp() throws IOException {
-        graph.io(GryoIo.build()).readGraph("/home/twilmes/repos/janusgraph/data/tinkerpop-modern.kryo");
 
-        GraphTraversalSource g = graph.traversal();
 
 //        List<Map<Object, Long>> result = g.V(new Object[0]).repeat(__.both(new String[0])).until((t) -> {
 //            return ((Vertex) t.get()).value("name").equals("lop") || t.loops() > 1;
@@ -78,9 +94,60 @@ public class QueryTest {
 
 //        List<Object> result = g.V().has("name", "marko").repeat(out()).until(outE().count().is(0)).values("name").toList();
 
-        List<Object> result = g.V().as("a").in().as("b").in().as("c").<Map<String, String>>select("a", "b", "c").by("name").limit(local, 1).toList();
+//        List<Object> result = g.V().as("a").in().as("b").in().as("c").<Map<String, String>>select("a", "b", "c").by("name").limit(local, 1).toList();
+//        List<Path> result = g.V().repeat(out()).times(2).emit().path().toList();
 
-        result.forEach(System.out::println);
+//        List<Object> result = g.V().has("name", "marko").repeat(out().as("a"))
+//            .until(identity().outE().as("b").count().is(0)).values("name").toList();
+
+//        List<Map<String, String>> result = g.V().until(__.out().out()).repeat(__.in().as("a").in()
+//            .as("b")).<String>select("a", "b").by("name").toList();
+
+//        List<List<Object>> result = g.withoutStrategies(ComputerVerificationStrategy.class, PathRetractionStrategy.class).
+//            V().as("v").both().as("v").
+//            project("src", "tgt", "p").
+//            by(select(first, "v")).
+//            by(select(last, "v")).
+//            by(select("v")).as("triple").
+//            group("x").
+//            by(select("src", "tgt")).
+//            by(select("p").fold()).select("tgt").barrier().
+//            repeat(both().as("v").
+//                project("src", "tgt", "p").
+//                by(select(first, "v")).
+//                by(select(last, "v")).
+//                by(select("v")).as("t").
+//                filter(select("p").count(local).as("l").
+//                    select(last, "t").select("p").dedup(local).count(local).where(eq("l"))).
+//                select(last, "t").
+//                not(select("p").as("p").count(local).as("l").
+//                    select("x").unfold().filter(select(keys).where(eq("t")).by(select("src", "tgt"))).
+//                    filter(select(values).unfold().or(count(local).where(lt("l")), where(eq("p"))))).
+//                barrier().
+//                group("x").
+//                by(select("src", "tgt")).
+//                by(select("p").fold()).select("tgt").barrier()).
+//            cap("x").select(values).unfold().unfold().map(unfold().id().fold()).toList();
+
+        for (int i = 0; i < 100; i++) {
+            graph.io(GryoIo.build()).readGraph("/home/twilmes/repos/janusgraph/data/tinkerpop-modern.kryo");
+
+            GraphTraversalSource g = graph.traversal();
+
+//            g.tx().rollback();
+
+            List<Map<String, String>> result = g.V().until(__.out().out()).repeat(__.in().as("a").in().as("b")).<String>select("a", "b").by("name").toList();
+
+
+            result.forEach(System.out::println);
+
+            System.out.println("Size: " + result.size());
+
+            assert result.size() == 2;
+
+            g.V().drop().iterate();
+            g.tx().commit();
+        }
     }
 
     @Test
