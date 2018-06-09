@@ -12,6 +12,18 @@
     <properties>
         <top.level.basedir>${basedir}/..</top.level.basedir>
     </properties>
+
+    <repositories>
+        <repository>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+            <id>central</id>
+            <name>bintray</name>
+            <url>http://jcenter.bintray.com</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>org.janusgraph</groupId>
@@ -28,6 +40,12 @@
             <groupId>com.apple</groupId>
             <artifactId>foundationdb</artifactId>
             <version>5.1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.geowarin</groupId>
+            <artifactId>docker-junit-rule</artifactId>
+            <version>1.1.0</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <build>

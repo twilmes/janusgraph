@@ -29,5 +29,4 @@ public class FoundationDBLogTest extends KCVSLogTest {
         FoundationDBStoreManager sm = new FoundationDBStoreManager(FoundationDBStorageSetup.getFoundationDBConfiguration());
         return new OrderedKeyValueStoreManagerAdapter(sm);
     }
-
 }
