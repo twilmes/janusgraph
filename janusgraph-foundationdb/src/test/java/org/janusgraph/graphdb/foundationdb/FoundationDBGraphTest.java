@@ -14,6 +14,7 @@
 
 package org.janusgraph.graphdb.foundationdb;
 
+import com.palantir.docker.compose.DockerComposeRule;
 import org.janusgraph.FoundationDBStorageSetup;
 import org.janusgraph.core.JanusGraphException;
 import org.janusgraph.core.JanusGraphFactory;
@@ -21,6 +22,7 @@ import org.janusgraph.diskstorage.Backend;
 import org.janusgraph.diskstorage.BackendException;
 import org.janusgraph.diskstorage.configuration.ConfigOption;
 import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -40,6 +42,9 @@ import static org.junit.Assert.*;
  * @author Ted Wilmes (twilmes@gmail.com)
  */
 public class FoundationDBGraphTest extends JanusGraphTest {
+
+    @ClassRule
+    public static DockerComposeRule docker = FoundationDBStorageSetup.startFoundationDBDocker();
 
     @Rule
     public TestName methodNameRule = new TestName();

@@ -14,14 +14,19 @@
 
 package org.janusgraph.graphdb.foundationdb;
 
+import com.palantir.docker.compose.DockerComposeRule;
 import org.janusgraph.FoundationDBStorageSetup;
 import org.janusgraph.diskstorage.configuration.WriteConfiguration;
 import org.janusgraph.graphdb.JanusGraphPerformanceMemoryTest;
+import org.junit.ClassRule;
 
 /**
  * @author Ted Wilmes (twilmes@gmail.com)
  */
 public class FoundationDBGraphPerformanceMemoryTest extends JanusGraphPerformanceMemoryTest {
+
+    @ClassRule
+    public static DockerComposeRule docker = FoundationDBStorageSetup.startFoundationDBDocker();
 
     @Override
     public WriteConfiguration getConfiguration() {

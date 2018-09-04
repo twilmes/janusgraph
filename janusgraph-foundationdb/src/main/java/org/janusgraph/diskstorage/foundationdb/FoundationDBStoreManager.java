@@ -44,6 +44,7 @@ import java.util.concurrent.ExecutionException;
 
 import static org.janusgraph.diskstorage.foundationdb.FoundationDBConfigOptions.CLUSTER_FILE_PATH;
 import static org.janusgraph.diskstorage.foundationdb.FoundationDBConfigOptions.DIRECTORY;
+import static org.janusgraph.diskstorage.foundationdb.FoundationDBConfigOptions.SERIALIZABLE;
 import static org.janusgraph.diskstorage.foundationdb.FoundationDBConfigOptions.VERSION;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.GRAPH_NAME;
 
@@ -63,6 +64,7 @@ public class FoundationDBStoreManager extends AbstractStoreManager implements Or
     protected final StoreFeatures features;
     protected DirectorySubspace rootDirectory;
     protected final String rootDirectoryName;
+    protected final boolean serializable;
 
     public FoundationDBStoreManager(Configuration configuration) throws BackendException {
         super(configuration);
@@ -72,6 +74,7 @@ public class FoundationDBStoreManager extends AbstractStoreManager implements Or
         rootDirectoryName = determineRootDirectoryName(configuration);
         db = !"default".equals(configuration.get(CLUSTER_FILE_PATH)) ?
             fdb.open(configuration.get(CLUSTER_FILE_PATH)) : fdb.open();
+        serializable = configuration.get(SERIALIZABLE);
         initialize(rootDirectoryName);
 
         features = new StandardStoreFeatures.Builder()
@@ -106,14 +109,12 @@ public class FoundationDBStoreManager extends AbstractStoreManager implements Or
     }
 
     @Override
-    public FoundationDBTx beginTransaction(final BaseTransactionConfig txCfg) throws BackendException {
+    public StoreTransaction beginTransaction(final BaseTransactionConfig txCfg) throws BackendException {
         try {
-            Transaction tx = null;
+            final Transaction tx = db.createTransaction();
 
-            if (transactional) {
-                tx = db.createTransaction();
-            }
-            FoundationDBTx fdbTx = new FoundationDBTx(tx, txCfg);
+            final StoreTransaction fdbTx = serializable ?
+                new SerializableFoundationDBTx(db, tx, txCfg) : new ReadCommittedFoundationDBTx(db, tx, txCfg);
 
             if (log.isTraceEnabled()) {
                 log.trace("FoundationDB tx created", new TransactionBegin(fdbTx.toString()));
@@ -203,16 +204,18 @@ public class FoundationDBStoreManager extends AbstractStoreManager implements Or
 
     @Override
     public void clearStorage() throws BackendException {
-        rootDirectory.removeIfExists(db);
-
-        close();
+        try {
+            rootDirectory.removeIfExists(db).get();
+        } catch (Exception e) {
+            throw new PermanentBackendException("Could not clear FoundationDB storage", e);
+        }
     }
 
     @Override
     public boolean exists() throws BackendException {
         // @todo
         try {
-            return DirectoryLayer.getDefault().open(db, PathUtil.from(rootDirectoryName)).get() != null;
+            return DirectoryLayer.getDefault().exists(db, PathUtil.from(rootDirectoryName)).get();
         } catch (InterruptedException e) {
             throw new PermanentBackendException(e);
         } catch (ExecutionException e) {

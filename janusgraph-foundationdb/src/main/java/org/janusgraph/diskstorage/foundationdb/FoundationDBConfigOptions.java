@@ -45,7 +45,7 @@ public interface FoundationDBConfigOptions {
         "version",
         "The version of the FoundationDB cluster.",
         ConfigOption.Type.LOCAL,
-        510);
+        520);
 
     ConfigOption<String> CLUSTER_FILE_PATH = new ConfigOption<>(
         FDB_NS,
@@ -53,4 +53,13 @@ public interface FoundationDBConfigOptions {
         "Path to the FoundationDB cluster file",
         ConfigOption.Type.LOCAL,
         "default");
+
+    ConfigOption<Boolean> SERIALIZABLE = new ConfigOption<>(
+        FDB_NS,
+        "serializable",
+        "If true",
+        ConfigOption.Type.LOCAL,
+        true);
+
+
 }

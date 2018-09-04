@@ -38,6 +38,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Ted Wilmes (twilmes@gmail.com)
@@ -72,7 +73,7 @@ public class FoundationDBKeyValueStore implements OrderedKeyValueStore {
 
     private static Transaction getTransaction(StoreTransaction txh) {
         Preconditions.checkArgument(txh!=null);
-        return ((FoundationDBTx) txh).getTransaction();
+        return ((SerializableFoundationDBTx) txh).getTransaction();
     }
 
     @Override
@@ -177,8 +178,8 @@ public class FoundationDBKeyValueStore implements OrderedKeyValueStore {
     @Override
     public Map<KVQuery,RecordIterator<KeyValueEntry>> getSlices(List<KVQuery> queries, StoreTransaction txh) throws BackendException {
         log.trace("beginning db={}, op=getSlice, tx={}", name, txh);
-        final Transaction tx = getTransaction(txh);
-        final Map<KVQuery, RecordIterator<KeyValueEntry>> resultMap = new HashMap<>();
+//        final Transaction tx = getTransaction(txh);
+        final Map<KVQuery, RecordIterator<KeyValueEntry>> resultMap = new ConcurrentHashMap<>();
         final List<CompletableFuture<Void>> futures = new ArrayList<>();
 
         try {
@@ -188,7 +189,7 @@ public class FoundationDBKeyValueStore implements OrderedKeyValueStore {
                 final KeySelector selector = query.getKeySelector();
                 final byte[] foundKey = db.pack(keyStart.as(ENTRY_FACTORY));
                 final byte[] endKey = db.pack(keyEnd.as(ENTRY_FACTORY));
-
+                    final Transaction tx = getTransaction(txh);
                     futures.add(tx.getRange(new Range(foundKey, endKey), query.getLimit()).asList()
                         .thenAcceptAsync((r) -> {
                             final List<KeyValueEntry> result = new ArrayList<>();

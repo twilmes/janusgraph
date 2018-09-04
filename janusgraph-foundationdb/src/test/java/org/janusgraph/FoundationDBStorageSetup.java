@@ -14,10 +14,14 @@
 
 package org.janusgraph;
 
+import com.palantir.docker.compose.DockerComposeRule;
+import com.palantir.docker.compose.connection.waiting.HealthChecks;
 import org.janusgraph.diskstorage.configuration.ModifiableConfiguration;
 import org.janusgraph.diskstorage.configuration.WriteConfiguration;
 
+import static org.janusgraph.diskstorage.foundationdb.FoundationDBConfigOptions.CLUSTER_FILE_PATH;
 import static org.janusgraph.diskstorage.foundationdb.FoundationDBConfigOptions.DIRECTORY;
+import static org.janusgraph.diskstorage.foundationdb.FoundationDBConfigOptions.SERIALIZABLE;
 import static org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration.*;
 
 /**
@@ -29,10 +33,20 @@ public class FoundationDBStorageSetup extends StorageSetup {
         return buildGraphConfiguration()
                 .set(STORAGE_BACKEND,"foundationdb")
                 .set(DIRECTORY, "janusgraph-test-fdb")
-                .set(DROP_ON_CLEAR, false);
+                .set(DROP_ON_CLEAR, false)
+                .set(CLUSTER_FILE_PATH, "src/test/resources/etc/fdb.cluster")
+                .set(SERIALIZABLE, true)
+                .set(STORAGE_BATCH, true);
     }
 
     public static WriteConfiguration getFoundationDBGraphConfiguration() {
         return getFoundationDBConfiguration().getConfiguration();
+    }
+
+    public static DockerComposeRule startFoundationDBDocker() {
+        return DockerComposeRule.builder()
+            .file("src/test/resources/docker-compose.yml")
+            .waitingForService("db", HealthChecks.toHaveAllPortsOpen())
+            .build();
     }
 }

@@ -14,10 +14,13 @@
 
 package org.janusgraph.blueprints.process;
 
+import com.palantir.docker.compose.DockerComposeRule;
 import org.apache.tinkerpop.gremlin.process.ProcessStandardSuite;
+import org.janusgraph.FoundationDBStorageSetup;
 import org.janusgraph.blueprints.FoundationDBGraphProvider;
 import org.janusgraph.core.JanusGraph;
 import org.apache.tinkerpop.gremlin.GraphProviderClass;
+import org.junit.ClassRule;
 import org.junit.runner.RunWith;
 
 /**
@@ -26,4 +29,7 @@ import org.junit.runner.RunWith;
 @RunWith(ProcessStandardSuite.class)
 @GraphProviderClass(provider = FoundationDBGraphProvider.class, graph = JanusGraph.class)
 public class FoundationDBJanusGraphProcessTest {
+
+    @ClassRule
+    public static DockerComposeRule docker = FoundationDBStorageSetup.startFoundationDBDocker();
 }

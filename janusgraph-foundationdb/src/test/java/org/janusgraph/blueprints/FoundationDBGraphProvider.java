@@ -15,13 +15,7 @@
 package org.janusgraph.blueprints;
 
 import org.janusgraph.FoundationDBStorageSetup;
-import org.janusgraph.StorageSetup;
 import org.janusgraph.diskstorage.configuration.ModifiableConfiguration;
-import org.janusgraph.diskstorage.foundationdb.FoundationDBTx;
-import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
-
-import java.time.Duration;
-import java.util.Set;
 
 /**
  * @author Ted Wilmes (twilmes@gmail.com)

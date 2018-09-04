@@ -14,17 +14,22 @@
 
 package org.janusgraph.diskstorage.foundationdb;
 
+import com.palantir.docker.compose.DockerComposeRule;
 import org.janusgraph.FoundationDBStorageSetup;
 import org.janusgraph.diskstorage.BackendException;
 import org.janusgraph.diskstorage.KeyColumnValueStoreTest;
 import org.janusgraph.diskstorage.keycolumnvalue.KeyColumnValueStoreManager;
 import org.janusgraph.diskstorage.keycolumnvalue.keyvalue.OrderedKeyValueStoreManagerAdapter;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 /**
  * @author Ted Wilmes (twilmes@gmail.com)
  */
 public class FoundationDBVariableLengthKCVSTest extends KeyColumnValueStoreTest {
+
+    @ClassRule
+    public static DockerComposeRule docker = FoundationDBStorageSetup.startFoundationDBDocker();
 
     public KeyColumnValueStoreManager openStorageManager() throws BackendException {
         FoundationDBStoreManager sm = new FoundationDBStoreManager(FoundationDBStorageSetup.getFoundationDBConfiguration());

@@ -14,13 +14,19 @@
 
 package org.janusgraph.graphdb.database.management;
 
+import com.palantir.docker.compose.DockerComposeRule;
 import org.janusgraph.FoundationDBStorageSetup;
 import org.janusgraph.diskstorage.configuration.WriteConfiguration;
+import org.junit.ClassRule;
 
 /**
  * @author Ted Wilmes (twilmes@gmail.com)
  */
 public class FoundationDBManagementTest extends ManagementTest {
+
+    @ClassRule
+    public static DockerComposeRule docker = FoundationDBStorageSetup.startFoundationDBDocker();
+
     @Override
     public WriteConfiguration getConfiguration() {
         return FoundationDBStorageSetup.getFoundationDBGraphConfiguration();

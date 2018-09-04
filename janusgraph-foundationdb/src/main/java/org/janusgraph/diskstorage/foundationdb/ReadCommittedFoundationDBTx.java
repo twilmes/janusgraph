@@ -14,6 +14,7 @@
 
 package org.janusgraph.diskstorage.foundationdb;
 
+import com.apple.foundationdb.Database;
 import com.apple.foundationdb.Transaction;
 import org.janusgraph.diskstorage.BackendException;
 import org.janusgraph.diskstorage.PermanentBackendException;
@@ -26,18 +27,32 @@ import org.slf4j.LoggerFactory;
 /**
  * Ted Wilmes (twilmes@gmail.com)
  */
-public class FoundationDBTx extends AbstractStoreTransaction {
+public class ReadCommittedFoundationDBTx extends AbstractStoreTransaction {
 
-    private static final Logger log = LoggerFactory.getLogger(FoundationDBTx.class);
+    private static final Logger log = LoggerFactory.getLogger(ReadCommittedFoundationDBTx.class);
 
     private volatile Transaction tx;
 
-    public FoundationDBTx(Transaction t, BaseTransactionConfig config) {
+    private final long startTimestamp;
+    private final Database db;
+
+    public ReadCommittedFoundationDBTx(Database db, Transaction t, BaseTransactionConfig config) {
         super(config);
         tx = t;
+        this.db = db;
+        this.startTimestamp = System.currentTimeMillis();
     }
 
-    public Transaction getTransaction() {
+    public synchronized Transaction getTransaction() {
+        if (System.currentTimeMillis() - startTimestamp > 4000) {
+            try {
+                commit();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            tx = db.createTransaction();
+        }
+
         return tx;
     }
 
