@@ -131,12 +131,9 @@
         <module>janusgraph-core</module>
         <module>janusgraph-server</module>
         <module>janusgraph-test</module>
-        <module>janusgraph-berkeleyje</module>
-        <module>janusgraph-cql</module>
-        <module>janusgraph-cassandra</module>
         <module>janusgraph-hadoop-parent</module>
         <module>janusgraph-hbase-parent</module>
-        <module>janusgraph-bigtable</module>
+        <module>janusgraph-foundationdb</module>
         <module>janusgraph-es</module>
         <module>janusgraph-lucene</module>
         <module>janusgraph-all</module>

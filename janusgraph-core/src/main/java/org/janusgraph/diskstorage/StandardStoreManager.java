@@ -24,12 +24,7 @@ import java.util.*;
  * It is subject to backwards-incompatible change.
  */
 public enum StandardStoreManager {
-    BDB_JE("org.janusgraph.diskstorage.berkeleyje.BerkeleyJEStoreManager", "berkeleyje"),
-    CASSANDRA_THRIFT("org.janusgraph.diskstorage.cassandra.thrift.CassandraThriftStoreManager", "cassandrathrift"),
-    CASSANDRA_ASTYANAX("org.janusgraph.diskstorage.cassandra.astyanax.AstyanaxStoreManager", ImmutableList.of("cassandra", "astyanax")),
-    CASSANDRA_EMBEDDED("org.janusgraph.diskstorage.cassandra.embedded.CassandraEmbeddedStoreManager", "embeddedcassandra"),
-    CQL("org.janusgraph.diskstorage.cql.CQLStoreManager", "cql"),
-    HBASE("org.janusgraph.diskstorage.hbase.HBaseStoreManager", "hbase"),
+    FDB("org.janusgraph.diskstorage.foundationdb.FoundationDBStoreManager", "fdb"),
     IN_MEMORY("org.janusgraph.diskstorage.keycolumnvalue.inmemory.InMemoryStoreManager", "inmemory");
 
     private final String managerClass;
