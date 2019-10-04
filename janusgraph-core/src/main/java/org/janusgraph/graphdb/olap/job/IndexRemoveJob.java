@@ -119,7 +119,7 @@ public class IndexRemoveJob extends IndexUpdateJob implements ScanJob {
     public void process(StaticBuffer key, Map<SliceQuery, EntryList> entries, ScanMetrics metrics) {
         //The queries are already tailored enough => everything should be removed
         try {
-            BackendTransaction mutator = writeTx.getTxHandle();
+            BackendTransaction mutator = writeTxManager.getTxHandle();
             final List<Entry> deletions;
             if (entries.size()==1) deletions = Iterables.getOnlyElement(entries.values());
             else {
@@ -135,7 +135,7 @@ public class IndexRemoveJob extends IndexUpdateJob implements ScanJob {
             }
         } catch (final Exception e) {
             managementSystem.rollback();
-            writeTx.rollback();
+            writeTxManager.rollback();
             metrics.incrementCustom(FAILED_TX);
             throw new JanusGraphException(e.getMessage(), e);
         }

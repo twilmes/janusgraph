@@ -19,11 +19,13 @@ import org.janusgraph.core.RelationType;
 import org.janusgraph.core.JanusGraphException;
 import org.janusgraph.core.JanusGraph;
 import org.janusgraph.core.schema.Index;
+import org.janusgraph.diskstorage.BackendTransaction;
 import org.janusgraph.diskstorage.configuration.ConfigNamespace;
 import org.janusgraph.diskstorage.configuration.ConfigOption;
 import org.janusgraph.diskstorage.configuration.Configuration;
 import org.janusgraph.diskstorage.keycolumnvalue.scan.ScanMetrics;
 import org.janusgraph.graphdb.configuration.GraphDatabaseConfiguration;
+import org.janusgraph.graphdb.database.EdgeSerializer;
 import org.janusgraph.graphdb.database.StandardJanusGraph;
 import org.janusgraph.graphdb.database.management.ManagementSystem;
 import org.janusgraph.graphdb.transaction.StandardJanusGraphTx;
@@ -65,10 +67,12 @@ public abstract class IndexUpdateJob {
 
     protected StandardJanusGraph graph;
     protected ManagementSystem managementSystem = null;
-    protected StandardJanusGraphTx writeTx;
+//    protected StandardJanusGraphTx writeTx;
     protected Index index;
     protected RelationType indexRelationType;
     protected Instant jobStartTime;
+
+    protected WriteTransactionManager writeTxManager = new WriteTransactionManager(500);
 
     public IndexUpdateJob() { }
 
@@ -115,14 +119,17 @@ public abstract class IndexUpdateJob {
             log.info("Found index {}", indexName);
             validateIndexStatus();
 
-            StandardTransactionBuilder txb = this.graph.buildTransaction();
-            txb.commitTime(jobStartTime);
-            writeTx = (StandardJanusGraphTx)txb.start();
+//            StandardTransactionBuilder txb = this.graph.buildTransaction();
+//            txb.commitTime(jobStartTime);
+//            writeTx = (StandardJanusGraphTx)txb.start();
+            writeTxManager.start();
         } catch (final Exception e) {
             if (null != managementSystem && managementSystem.isOpen())
                 managementSystem.rollback();
-            if (writeTx!=null && writeTx.isOpen())
-                writeTx.rollback();
+//            if (writeTx!=null && writeTx.isOpen())
+//                writeTx.rollback();
+            if (writeTxManager != null && writeTxManager.isOpen())
+                writeTxManager.rollback();
             metrics.incrementCustom(FAILED_TX);
             throw new JanusGraphException(e.getMessage(), e);
         }
@@ -132,9 +139,12 @@ public abstract class IndexUpdateJob {
         try {
             if (null != managementSystem && managementSystem.isOpen())
                 managementSystem.commit();
-            if (writeTx!=null && writeTx.isOpen())
-                writeTx.commit();
+//            if (writeTx!=null && writeTx.isOpen())
+//                writeTx.commit();
+            if (writeTxManager != null && writeTxManager.isOpen())
+                writeTxManager.commit();
             metrics.incrementCustom(SUCCESS_TX);
+            System.out.println("Out: " + metrics.get(ScanMetrics.Metric.SUCCESS));
         } catch (RuntimeException e) {
             log.error("Transaction commit threw runtime exception:", e);
             metrics.incrementCustom(FAILED_TX);
@@ -144,5 +154,49 @@ public abstract class IndexUpdateJob {
 
     protected abstract void validateIndexStatus();
 
+    protected class WriteTransactionManager {
+        private StandardJanusGraphTx writeTx;
+        private int mutationCounter = 0;
 
+        private final int batchSize;
+
+        public WriteTransactionManager(final int batchSize) {
+            this.batchSize = batchSize;
+        }
+
+        public void commit() {
+            writeTx.commit();
+        }
+
+        public boolean isOpen() {
+            return writeTx.isOpen();
+        }
+
+        public void rollback() {
+            writeTx.rollback();
+        }
+
+        public void start() {
+            StandardTransactionBuilder txb = graph.buildTransaction();
+            txb.commitTime(jobStartTime);
+            writeTx = (StandardJanusGraphTx)txb.start();
+        }
+
+        public void mutationAdded() {
+            if (mutationCounter % batchSize == 0) {
+                System.out.println("Committed " + mutationCounter);
+                writeTx.commit();
+                start();
+            }
+            mutationCounter++;
+        }
+
+        public BackendTransaction getTxHandle() {
+            return writeTx.getTxHandle();
+        }
+
+        public StandardJanusGraphTx getWriteTx() {
+            return writeTx;
+        }
+    }
 }

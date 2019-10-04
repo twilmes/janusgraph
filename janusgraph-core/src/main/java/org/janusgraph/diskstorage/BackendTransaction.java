@@ -209,7 +209,7 @@ public class BackendTransaction implements LoggableTransaction {
      * @param deletions List of columns to be removed
      */
     public void mutateIndex(StaticBuffer key, List<Entry> additions, List<Entry> deletions) throws BackendException {
-        indexStore.mutateEntries(key, additions, deletions, storeTx);
+                indexStore.mutateEntries(key, additions, deletions, storeTx);
     }
 
     /**

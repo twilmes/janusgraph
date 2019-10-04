@@ -118,11 +118,12 @@ public class IndexRepairJob extends IndexUpdateJob implements VertexScanJob {
     @Override
     public void process(JanusGraphVertex vertex, ScanMetrics metrics) {
         try {
-            BackendTransaction mutator = writeTx.getTxHandle();
+//            BackendTransaction mutator = writeTx.getTxHandle();
+            BackendTransaction mutator = writeTxManager.getTxHandle();
             if (index instanceof RelationTypeIndex) {
                 RelationTypeIndexWrapper wrapper = (RelationTypeIndexWrapper)index;
                 InternalRelationType wrappedType = wrapper.getWrappedType();
-                EdgeSerializer edgeSerializer = writeTx.getEdgeSerializer();
+                EdgeSerializer edgeSerializer = writeTxManager.getWriteTx().getEdgeSerializer();
                 List<Entry> additions = new ArrayList<>();
 
                 for (Object relation : vertex.query().types(indexRelationTypeName).direction(Direction.OUT).relations()) {
@@ -130,12 +131,13 @@ public class IndexRepairJob extends IndexUpdateJob implements VertexScanJob {
                     for (int pos = 0; pos < janusgraphRelation.getArity(); pos++) {
                         if (!wrappedType.isUnidirected(Direction.BOTH) && !wrappedType.isUnidirected(EdgeDirection.fromPosition(pos)))
                             continue; //Directionality is not covered
-                        Entry entry = edgeSerializer.writeRelation(janusgraphRelation, wrappedType, pos, writeTx);
+                        Entry entry = edgeSerializer.writeRelation(janusgraphRelation, wrappedType, pos, writeTxManager.getWriteTx());
                         additions.add(entry);
                     }
                 }
-                StaticBuffer vertexKey = writeTx.getIdInspector().getKey(vertex.longId());
+                StaticBuffer vertexKey = writeTxManager.getWriteTx().getIdInspector().getKey(vertex.longId());
                 mutator.mutateEdges(vertexKey, additions, KCVSCache.NO_DELETIONS);
+                writeTxManager.mutationAdded();
                 metrics.incrementCustom(ADDED_RECORDS_COUNT, additions.size());
             } else if (index instanceof JanusGraphIndex) {
                 IndexType indexType = managementSystem.getSchemaVertex(index).asIndexType();
@@ -168,6 +170,7 @@ public class IndexRepairJob extends IndexUpdateJob implements VertexScanJob {
                         for (IndexSerializer.IndexUpdate<StaticBuffer,Entry> update : updates) {
                             log.debug("Mutating index {}: {}", indexType, update.getEntry());
                             mutator.mutateIndex(update.getKey(), Lists.newArrayList(update.getEntry()), KCVSCache.NO_DELETIONS);
+                            writeTxManager.mutationAdded();
                             metrics.incrementCustom(ADDED_RECORDS_COUNT);
                         }
                     }
@@ -179,12 +182,12 @@ public class IndexRepairJob extends IndexUpdateJob implements VertexScanJob {
                         metrics.incrementCustom(DOCUMENT_UPDATES_COUNT);
                     }
                     mutator.getIndexTransaction(indexType.getBackingIndexName()).restore(documentsPerStore);
+                    writeTxManager.mutationAdded();
                 }
-
             } else throw new UnsupportedOperationException("Unsupported index found: "+index);
         } catch (final Exception e) {
             managementSystem.rollback();
-            writeTx.rollback();
+            writeTxManager.rollback();
             metrics.incrementCustom(FAILED_TX);
             throw new JanusGraphException(e.getMessage(), e);
         }
