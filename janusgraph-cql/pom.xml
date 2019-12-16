@@ -36,6 +36,19 @@
             <groupId>com.datastax.cassandra</groupId>
             <artifactId>cassandra-driver-core</artifactId>
             <version>${cassandra-driver.version}</version>
+            <classifier>shaded</classifier>
+            <!-- Because the shaded JAR uses the original POM, you still need
+                 to exclude this dependency explicitly: -->
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.common</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
