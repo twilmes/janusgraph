@@ -87,6 +87,10 @@ public class StandardSchemaCache implements SchemaCache {
 
     @Override
     public Long getSchemaId(final String schemaName) {
+
+        // @todo hackage!
+        if (schemaName.equals("rt\u001Egremlin.traversalVertexProgram.activeTraversers") || schemaName.equals("rt\u001Egremlin.traversalVertexProgram.haltedTraversers")) return null;
+
         ConcurrentMap<String,Long> types = typeNames;
         Long id;
         if (types==null) {

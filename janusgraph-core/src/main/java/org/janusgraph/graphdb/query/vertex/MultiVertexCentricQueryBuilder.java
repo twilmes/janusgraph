@@ -26,6 +26,8 @@ import org.janusgraph.graphdb.transaction.StandardJanusGraphTx;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Implementation of {@link JanusGraphMultiVertexQuery} that extends {@link BasicVertexCentricQueryBuilder}
@@ -42,6 +44,9 @@ public class MultiVertexCentricQueryBuilder extends BasicVertexCentricQueryBuild
      * The base vertices of this query
      */
     private final Set<InternalVertex> vertices;
+
+    ThreadPoolExecutor executor =
+        (ThreadPoolExecutor) Executors.newFixedThreadPool(8);
 
     public MultiVertexCentricQueryBuilder(final StandardJanusGraphTx tx) {
         super(tx);

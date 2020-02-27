@@ -68,22 +68,23 @@ public class GuavaVertexCache implements VertexCache {
     public InternalVertex get(final long id, final Retriever<Long, InternalVertex> retriever) {
         final Long vertexId = id;
 
-        InternalVertex vertex = cache.getIfPresent(vertexId);
+//        InternalVertex vertex = cache.getIfPresent(vertexId);
 
-        if (vertex == null) {
+//        if (vertex == null) {
             InternalVertex newVertex = volatileVertices.get(vertexId);
 
             if (newVertex == null) {
                 newVertex = retriever.get(vertexId);
             }
             assert newVertex!=null;
-            try {
-                vertex = cache.get(vertexId, new NewVertexCallable(newVertex));
-            } catch (Exception e) { throw new AssertionError("Should not happen: "+e.getMessage()); }
-            assert vertex!=null;
-        }
-
-        return vertex;
+            return newVertex;
+//            try {
+//                vertex = cache.get(vertexId, new NewVertexCallable(newVertex));
+//            } catch (Exception e) { throw new AssertionError("Should not happen: "+e.getMessage()); }
+//            assert vertex!=null;
+//        }
+//
+//        return vertex;
     }
 
     @Override

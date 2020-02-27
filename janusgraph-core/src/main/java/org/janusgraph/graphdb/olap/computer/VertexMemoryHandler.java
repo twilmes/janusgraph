@@ -65,11 +65,18 @@ class VertexMemoryHandler<M> implements PreloadedVertex.PropertyMixing, Messenge
     public <V> Iterator<VertexProperty<V>> properties(String... keys) {
         final Set<String> memoryKeys = vertexMemory.getMemoryKeys();
         if (memoryKeys.isEmpty()) return Collections.emptyIterator();
+        List<String> filteredKeys = new ArrayList<>();
         if (keys==null || keys.length==0) {
-            keys = memoryKeys.stream().filter(k -> !k.equals(TraversalVertexProgram.HALTED_TRAVERSERS)).toArray(String[]::new);
+//            keys = memoryKeys.stream().filter(k -> !k.equals(TraversalVertexProgram.HALTED_TRAVERSERS)).toArray(String[]::new);
+
+            for (String k : keys) {
+                if (!k.equals(TraversalVertexProgram.HALTED_TRAVERSERS)) {
+                    filteredKeys.add(k);
+                }
+            }
         }
         final List<VertexProperty<V>> result = new ArrayList<>(Math.min(keys.length,memoryKeys.size()));
-        for (String key : keys) {
+        for (String key : filteredKeys) {
             if (!supports(key)) continue;
             V value = vertexMemory.getProperty(vertexId,key);
             if (value!=null) result.add(constructProperty(key,value));

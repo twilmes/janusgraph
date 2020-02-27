@@ -174,7 +174,7 @@ public class Backend implements LockerProvider, AutoCloseable {
         }
 
         if (configuration.get(PARALLEL_BACKEND_OPS)) {
-            int poolSize = Runtime.getRuntime().availableProcessors() * THREAD_POOL_SIZE_SCALE_FACTOR;
+            int poolSize = Runtime.getRuntime().availableProcessors();// * THREAD_POOL_SIZE_SCALE_FACTOR;
             threadPool = Executors.newFixedThreadPool(poolSize);
             log.info("Initiated backend operations thread pool of size {}", poolSize);
         } else {

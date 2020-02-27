@@ -19,6 +19,7 @@ import com.carrotsearch.hppc.LongObjectHashMap;
 import com.carrotsearch.hppc.LongHashSet;
 import com.carrotsearch.hppc.LongSet;
 import com.google.common.base.Preconditions;
+import org.apache.commons.lang.ArrayUtils;
 import org.janusgraph.core.*;
 import org.janusgraph.diskstorage.Entry;
 import org.janusgraph.diskstorage.EntryMetaData;
@@ -43,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.janusgraph.graphdb.database.idhandling.IDHandler.DirectionID;
@@ -82,6 +84,9 @@ public class EdgeSerializer implements RelationReader {
         return IDHandler.readRelationType(data.asReadBuffer()).dirID.getDirection();
     }
 
+    static Map<RelationType, Multiplicity> multiplicityMap = new HashMap<>();
+    static Map<RelationType, Long[]> sortKeyMap = new HashMap<>();
+
     @Override
     public RelationCache parseRelation(Entry data, boolean excludeProperties, TypeInspector tx) {
         ReadBuffer in = data.asReadBuffer();
@@ -93,8 +98,20 @@ public class EdgeSerializer implements RelationReader {
 
         RelationType relationType = tx.getExistingRelationType(typeId);
         InternalRelationType def = (InternalRelationType) relationType;
-        Multiplicity multiplicity = def.multiplicity();
-        long[] keySignature = def.getSortKey();
+
+        Multiplicity multiplicity = multiplicityMap.get(relationType);
+        if (multiplicity == null) {
+            multiplicity = def.multiplicity();
+            multiplicityMap.put(relationType, multiplicity);
+        }
+
+//        Multiplicity multiplicity = def.multiplicity();
+//        long[] keySignature = def.getSortKey();
+        Long[] keySignature = sortKeyMap.get(relationType);
+        if (keySignature == null) {
+            keySignature = ArrayUtils.toObject(def.getSortKey());
+            sortKeyMap.put(relationType, keySignature);
+        }
 
         long relationId;
         Object other;
@@ -150,7 +167,7 @@ public class EdgeSerializer implements RelationReader {
                 in.movePositionTo(startKeyPos);
                 ReadBuffer inKey = in;
                 if (def.getSortOrder() == Order.DESC) inKey = in.subrange(keyLength, true);
-                readInlineTypes(keySignature, properties, inKey, tx, InlineType.KEY);
+                readInlineTypes(ArrayUtils.toPrimitive(keySignature), properties, inKey, tx, InlineType.KEY);
                 in.movePositionTo(currentPos);
             }
 
