@@ -31,6 +31,7 @@ import org.apache.tinkerpop.gremlin.structure.Graph;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.structure.T;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationConverter;
@@ -219,7 +220,9 @@ public class ConfigurationManagementGraph {
      * @return Map&lt;String, Object&gt;
      */
     public Map<String, Object> getConfiguration(final String configName) {
-        final List<Map<Object, Object>> graphConfiguration = graph.traversal().V().has(PROPERTY_GRAPH_NAME, configName).valueMap().toList();
+        final GraphTraversalSource g = graph.traversal();
+        g.tx().rollback();
+        final List<Map<Object, Object>> graphConfiguration = g.V().has(PROPERTY_GRAPH_NAME, configName).valueMap().toList();
         if (graphConfiguration.isEmpty()) return null;
         else if (graphConfiguration.size() > 1) { // this case shouldn't happen because our index has a unique constraint
             log.warn("Your configuration management graph is an a bad state. Please " +
