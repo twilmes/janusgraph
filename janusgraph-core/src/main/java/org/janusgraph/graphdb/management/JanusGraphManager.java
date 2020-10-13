@@ -170,6 +170,8 @@ public class JanusGraphManager implements GraphManager {
     @Override
     public TraversalSource removeTraversalSource(String tsName) {
         if (tsName == null) return null;
+        // Remove the traversal source from the script engine bindings so that closed/dropped graph instances do not leak
+        removeBinding(tsName);
         return traversalSources.remove(tsName);
     }
 
@@ -252,6 +254,8 @@ public class JanusGraphManager implements GraphManager {
     @Override
     public Graph removeGraph(String gName) {
         if (gName == null) return null;
+        // Remove the graph from the script engine bindings so that closed/dropped graph instances do not leak
+        removeBinding(gName);
         return graphs.remove(gName);
     }
 
@@ -270,5 +274,13 @@ public class JanusGraphManager implements GraphManager {
         graphManager.putTraversalSource(traversalName, traversalSource);
     }
 
+    private void removeBinding(String key) {
+        if (null != gremlinExecutor) {
+            final Bindings bindings = gremlinExecutor.getScriptEngineManager().getBindings();
+            if (bindings.get(key) != null) {
+                gremlinExecutor.getScriptEngineManager().getBindings().remove(key);
+            }
+        }
+    }
 }
 

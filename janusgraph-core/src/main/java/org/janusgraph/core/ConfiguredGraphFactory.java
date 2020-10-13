@@ -139,6 +139,7 @@ public class ConfiguredGraphFactory {
         final JanusGraphManager jgm = JanusGraphManagerUtility.getInstance();
         Preconditions.checkNotNull(jgm, JANUS_GRAPH_MANAGER_EXPECTED_STATE_MSG);
         final Graph graph = jgm.removeGraph(graphName);
+        jgm.removeTraversalSource(graphName + "_traversal");
         if (null != graph) graph.close();
         return (JanusGraph) graph;
     }
@@ -243,7 +244,9 @@ public class ConfiguredGraphFactory {
     private static void removeGraphFromCache(final JanusGraph graph) {
         final JanusGraphManager jgm = JanusGraphManagerUtility.getInstance();
         Preconditions.checkNotNull(jgm, JANUS_GRAPH_MANAGER_EXPECTED_STATE_MSG);
-        jgm.removeGraph(((StandardJanusGraph) graph).getGraphName());
+        final String graphName = ((StandardJanusGraph) graph).getGraphName();
+        jgm.removeGraph(graphName);
+        jgm.removeTraversalSource(graphName + "_traversal");
         final ManagementSystem mgmt = (ManagementSystem) graph.openManagement();
         mgmt.evictGraphFromCache();
         mgmt.commit();
